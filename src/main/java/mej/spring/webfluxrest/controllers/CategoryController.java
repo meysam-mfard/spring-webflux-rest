@@ -1,5 +1,6 @@
 package mej.spring.webfluxrest.controllers;
 
+import lombok.extern.log4j.Log4j2;
 import mej.spring.webfluxrest.domain.Category;
 import mej.spring.webfluxrest.repositories.CategoryRepository;
 import org.reactivestreams.Publisher;
@@ -9,6 +10,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
+@Log4j2
 public class CategoryController {
 
     private final CategoryRepository categoryRepository;
@@ -37,5 +39,18 @@ public class CategoryController {
     public Mono<Category> putCategory(@PathVariable  String id, @RequestBody Category category) {
         category.setId(id);
         return categoryRepository.save(category);
+    }
+
+    @PatchMapping("/api/v1/category/{id}")
+    Mono<Category> patchCategory(@PathVariable String id, @RequestBody Category category) {
+
+        Category foundCategory = categoryRepository.findById(id).block();
+
+        if(!foundCategory.getDescription().equals(category.getDescription())) {
+            foundCategory.setDescription(category.getDescription());
+            return categoryRepository.save(foundCategory);
+        }
+
+        return Mono.just(foundCategory);
     }
 }

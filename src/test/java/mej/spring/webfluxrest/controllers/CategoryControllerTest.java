@@ -12,6 +12,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 public class CategoryControllerTest {
 
@@ -29,7 +33,7 @@ public class CategoryControllerTest {
 
     @Test
     public void getCategories() {
-        BDDMockito.given(categoryRepository.findAll())
+        given(categoryRepository.findAll())
                 .willReturn(Flux.just("cat1", "cat2").map(Category::new));
         webTestClient
                 .get()
@@ -40,7 +44,7 @@ public class CategoryControllerTest {
 
     @Test
     public void getCategory() {
-        BDDMockito.given(categoryRepository.findById(CATEGORY_ID))
+        given(categoryRepository.findById(CATEGORY_ID))
                 .willReturn(Mono.just(new Category("Cat")));
 
         webTestClient
@@ -52,7 +56,7 @@ public class CategoryControllerTest {
 
     @Test
     public void postCategory() {
-        BDDMockito.given(categoryRepository.saveAll(any(Publisher.class)))
+        given(categoryRepository.saveAll(any(Publisher.class)))
                 .willReturn(Flux.just(new Category("cat")));
 
         Mono<Category> catToSave = Mono.just(new Category("some cat"));
@@ -68,7 +72,7 @@ public class CategoryControllerTest {
 
     @Test
     public void putCategory() {
-        BDDMockito.given(categoryRepository.save(any(Category.class)))
+        given(categoryRepository.save(any(Category.class)))
                 .willReturn(Mono.just(new Category()));
 
         Mono<Category> catToUpdate = Mono.just(new Category("some cat"));
@@ -79,5 +83,50 @@ public class CategoryControllerTest {
                 .exchange()
                 .expectStatus()
                 .isOk();
+    }
+
+    @Test
+    public void patchCategory_noChange() {
+        final Category UNCHANGED_CAT = new Category("some description");
+
+        given(categoryRepository.findById(anyString()))
+                .willReturn(Mono.just(UNCHANGED_CAT));
+
+        given(categoryRepository.save(any(Category.class)))
+                .willReturn(Mono.just(new Category()));
+
+        Mono<Category> catToUpdateMono = Mono.just(UNCHANGED_CAT);
+
+        webTestClient.patch()
+                .uri("/api/v1/category/dsklfhadslfhadsflk")
+                .body(catToUpdateMono, Category.class)
+                .exchange()
+                .expectStatus()
+                .isOk();
+
+        verify(categoryRepository, never()).save(any());
+    }
+
+    @Test
+    public void patchCategory_withChange() {
+        final Category CAT1 = new Category("some description");
+        final Category CAT2 = new Category("another description");
+
+        given(categoryRepository.findById(anyString()))
+                .willReturn(Mono.just(CAT1));
+
+        given(categoryRepository.save(any(Category.class)))
+                .willReturn(Mono.just(new Category()));
+
+        Mono<Category> catToUpdateMono = Mono.just(CAT2);
+
+        webTestClient.patch()
+                .uri("/api/v1/category/dsklfhadslfhadsflk")
+                .body(catToUpdateMono, Category.class)
+                .exchange()
+                .expectStatus()
+                .isOk();
+
+        verify(categoryRepository).save(any());
     }
 }
